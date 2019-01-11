@@ -2,11 +2,11 @@
 
 namespace Victorlap\Approvable\Tests\Models;
 
+use DateTime;
 use Victorlap\Approvable\Approval;
 use Victorlap\Approvable\Tests\TestCase;
 
-class ApprovalTest extends TestCase
-{
+class ApprovalTest extends TestCase {
     public function test_class_approvals()
     {
         $post = $this->createPost(PostCannotBeApproved::class);
@@ -22,9 +22,10 @@ class ApprovalTest extends TestCase
 
     public function test_open_scope()
     {
-        $this->createApproval(
-            ['approved' => null]
-        );
+        $this->createApproval([
+            'approved_at' => NULL,
+            'rejected_at' => NULL
+        ]);;
 
         $this->assertCount(1, Approval::open()->get());
         $this->assertCount(0, Approval::accepted()->get());
@@ -34,9 +35,10 @@ class ApprovalTest extends TestCase
 
     public function test_accepted_scope()
     {
-        $this->createApproval(
-            ['approved' => true]
-        );
+        $this->createApproval([
+            'approved_at' => new DateTime(),
+            'rejected_at' => NULL
+        ]);
 
         $this->assertCount(0, Approval::open()->get());
         $this->assertCount(1, Approval::accepted()->get());
@@ -45,9 +47,10 @@ class ApprovalTest extends TestCase
 
     public function test_rejected_scope()
     {
-        $this->createApproval(
-            ['approved' => false]
-        );
+        $this->createApproval([
+            'approved_at' => NULL,
+            'rejected_at' => new DateTime()
+        ]);
 
         $this->assertCount(0, Approval::open()->get());
         $this->assertCount(0, Approval::accepted()->get());
@@ -56,12 +59,13 @@ class ApprovalTest extends TestCase
 
     public function test_accept_method()
     {
-        $post = $this->createPost(PostCannotBeApproved::class);
+        $post        = $this->createPost(PostCannotBeApproved::class);
         $post->title = 'Bad Post';
         $post->save();
 
         $this->assertEquals('Cool Post', $post->title);
-        $this->assertNull(Approval::first()->approved);
+        $this->assertNull(Approval::first()->approved_at);
+        $this->assertNull(Approval::first()->rejected_at);
 
         $post->approvals->each->accept();
 
@@ -69,21 +73,24 @@ class ApprovalTest extends TestCase
         //$this->assertEquals('Bad Post', $post->fresh()->title);
         $this->assertEquals('Bad Post', Post::first()->title);
         $this->assertEquals(1, Post::count());
-        $this->assertTrue(Approval::first()->approved);
+        $this->assertNotNull(Approval::first()->approved_at);
+        $this->assertNull(Approval::first()->rejected_at);
     }
 
     public function test_reject_method()
     {
-        $post = $this->createPost(PostCannotBeApproved::class);
+        $post        = $this->createPost(PostCannotBeApproved::class);
         $post->title = 'Bad Post';
         $post->save();
 
         $this->assertEquals('Cool Post', $post->title);
-        $this->assertNull(Approval::first()->approved);
+        $this->assertNull(Approval::first()->approved_at);
+        $this->assertNull(Approval::first()->rejected_at);
 
         $post->approvals->each->reject();
 
         $this->assertEquals('Cool Post', $post->fresh()->title);
-        $this->assertFalse(Approval::first()->approved);
+        $this->assertNull(Approval::first()->approved_at);
+        $this->assertNotNull(Approval::first()->rejected_at);
     }
 }

@@ -4,8 +4,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Database\Migrations\Migration;
 
-class CreateApprovalsTable extends Migration
-{
+class CreateApprovalsTable extends Migration {
     /**
      * Run the migrations.
      *
@@ -17,12 +16,19 @@ class CreateApprovalsTable extends Migration
             $table->increments('id');
             $table->string('approvable_type');
             $table->integer('approvable_id');
-            $table->integer('user_id')->nullable();
+            $table->integer('user_id')->nullable()->unsigned();
             $table->string('key');
-            $table->text('value')->nullable();
-            $table->boolean('approved')->nullable()->default(null);
+            $table->text('old_value')->nullable();
+            $table->text('new_value')->nullable();
+            $table->ipAddress('ip_address')->nullable();
+            $table->string('user_agent')->nullable();
+            $table->dateTime('approved_at')->nullable();
+            $table->integer('approved_by')->nullable()->unsigned();
+            $table->dateTime('rejected_at')->nullable();
+            $table->integer('rejected_by')->nullable()->unsigned();
             $table->timestamps();
-            $table->index(array('approvable_id', 'approvable_type'));
+
+            $table->index(['approvable_id', 'approvable_type']);
         });
     }
 

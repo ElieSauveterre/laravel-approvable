@@ -2,15 +2,26 @@
 
 namespace Victorlap\Approvable;
 
+use DateTime;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model as Eloquent;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Support\Facades\Auth;
 
-class Approval extends Eloquent
-{
+class Approval extends Eloquent {
     public $table = 'approvals';
 
-    protected $casts = ['approved' => 'bool'];
+    protected $casts = [
+        'approved_by' => 'integer',
+        'rejected_by' => 'integer',
+        'user_id'     => 'integer'
+    ];
+    protected $dates = [
+        'created_at',
+        'updated_at',
+        'approved_at',
+        'rejected_at'
+    ];
 
     public function approvable(): MorphTo
     {
@@ -24,35 +35,38 @@ class Approval extends Eloquent
 
     public function accept(): void
     {
-        $approvable  = $this->approvable;
+        $approvable = $this->approvable;
         $approvable->withoutApproval();
-        $approvable->{$this->getFieldName()} = $this->value;
+        $approvable->{$this->getFieldName()} = $this->new_value;
         $approvable->save();
         $approvable->withApproval();
 
-        $this->approved = true;
+        $this->approved_at = new DateTime();
+        $this->approved_by = Auth::id();
         $this->save();
     }
 
     public function reject(): void
     {
-        $this->approved = false;
+        $this->rejected_at = new DateTime();
+        $this->rejected_by = Auth::id();
         $this->save();
     }
 
     public function scopeOpen($query): Builder
     {
-        return $query->where('approved', null);
+        return $query->whereNull('approved_at')
+            ->whereNull('rejected_at');
     }
 
     public function scopeRejected($query): Builder
     {
-        return $query->where('approved', false);
+        return $query->whereNotNull('rejected_at');
     }
 
     public function scopeAccepted($query): Builder
     {
-        return $query->where('approved', true);
+        return $query->whereNotNull('approved_at');
     }
 
     public function scopeOfClass($query, $class): Builder

@@ -2,19 +2,19 @@
 
 namespace Victorlap\Approvable;
 
+use DateTime;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
-trait Approvable
-{
+trait Approvable {
 
     /** @var array */
-    public $approveOf = array();
+    public $approveOf = [];
 
     /** @var array */
-    public $dontApproveOf = array();
+    public $dontApproveOf = [];
 
     /** @var bool */
     protected $withoutApproval = false;
@@ -49,7 +49,8 @@ trait Approvable
             ->when($attribute !== null, function ($query) use ($attribute) {
                 $query->where('key', $attribute);
             })
-            ->where('approved', null)
+            ->whereNull('approved_at')
+            ->whereNull('rejected_at')
             ->exists();
     }
 
@@ -61,7 +62,8 @@ trait Approvable
     public function getPendingApprovalAttributes(): Collection
     {
         return $this->approvals()
-            ->where('approved', null)
+            ->whereNull('approved_at')
+            ->whereNull('rejected_at')
             ->groupBy('key')
             ->pluck('key');
     }
@@ -114,19 +116,20 @@ trait Approvable
             return true;
         }
 
-        $changes_to_record = $this->changedApprovableFields();
+        $changesToRecord = $this->changedApprovableFields();
 
-        $approvals = array();
-        foreach ($changes_to_record as $key => $change) {
-            $approvals[] = array(
+        $approvals = [];
+        foreach ($changesToRecord as $key => $change) {
+            $approvals[] = [
                 'approvable_type' => $this->getMorphClass(),
-                'approvable_id' => $this->getKey(),
-                'key' => $key,
-                'value' => $change,
-                'user_id' => $this->getSystemUserId(),
-                'created_at' => new \DateTime(),
-                'updated_at' => new \DateTime(),
-            );
+                'approvable_id'   => $this->getKey(),
+                'key'             => $key,
+                'old_value'       => $change['oldValue'],
+                'new_value'       => $change['newValue'],
+                'user_id'         => $this->getSystemUserId(),
+                'created_at'      => new DateTime(),
+                'updated_at'      => new DateTime(),
+            ];
         }
 
         if (count($approvals) > 0) {
@@ -145,13 +148,17 @@ trait Approvable
      */
     private function changedApprovableFields(): array
     {
-        $dirty = $this->getDirty();
-        $changes_to_record = array();
+        $dirty           = $this->getDirty();
+        $changesToRecord = [];
 
         foreach ($dirty as $key => $value) {
             if ($this->isApprovable($key)) {
                 if (!isset($this->original[$key]) || $this->original[$key] != $this->attributes[$key]) {
-                    $changes_to_record[$key] = $value;
+
+                    $changesToRecord[$key] = [
+                        'oldValue' => isset($this->original[$key]) ? $this->original[$key] : NULL,
+                        'newValue' => $value
+                    ];
 
                     // Reset changes that we want to approve
                     if (!isset($this->original[$key])) {
@@ -163,7 +170,7 @@ trait Approvable
             }
         }
 
-        return $changes_to_record;
+        return $changesToRecord;
     }
 
     /**
