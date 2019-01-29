@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Request;
+use Webpatser\Uuid\Uuid;
 
 trait Approvable {
 
@@ -118,15 +120,19 @@ trait Approvable {
 
         $changesToRecord = $this->changedApprovableFields();
 
+        $batch     = Uuid::generate();
         $approvals = [];
         foreach ($changesToRecord as $key => $change) {
             $approvals[] = [
+                'batch'           => $batch,
                 'approvable_type' => $this->getMorphClass(),
                 'approvable_id'   => $this->getKey(),
                 'key'             => $key,
                 'old_value'       => $change['oldValue'],
                 'new_value'       => $change['newValue'],
                 'user_id'         => $this->getSystemUserId(),
+                'ip_address'      => Request::ip(),
+                'user_agent'      => Request::userAgent(),
                 'created_at'      => new DateTime(),
                 'updated_at'      => new DateTime(),
             ];
@@ -153,7 +159,7 @@ trait Approvable {
 
         foreach ($dirty as $key => $value) {
             if ($this->isApprovable($key)) {
-                if (!isset($this->original[$key]) || $this->original[$key] != $this->attributes[$key]) {
+                if (!isset($this->original[$key]) || !$this->isEqual($key, $this->original[$key], $this->attributes[$key])) {
 
                     $changesToRecord[$key] = [
                         'oldValue' => isset($this->original[$key]) ? $this->original[$key] : NULL,
@@ -171,6 +177,19 @@ trait Approvable {
         }
 
         return $changesToRecord;
+    }
+
+    /**
+     * Compare old and new value. Retune TRUE if equals, FALSE otherwise.
+     * This function is here to be overrided when costum compare is needed
+     *
+     * @param string $field The name of the field for which to compare values.
+     * @param mixed $oldValue
+     * @param mixed $newValue
+     */
+    protected function isEqual($field, $oldValue, $newValue): bool
+    {
+        return $oldValue == $newValue;
     }
 
     /**
