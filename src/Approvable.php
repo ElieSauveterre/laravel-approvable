@@ -113,11 +113,6 @@ trait Approvable {
             return true;
         }
 
-        if (!$this->exists) {
-            // There is currently no way (implemented) to enable this for new models.
-            return true;
-        }
-
         $changesToRecord = $this->changedApprovableFields();
 
         $batch     = Uuid::generate();
