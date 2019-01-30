@@ -73,4 +73,19 @@ class Approval extends Eloquent {
     {
         return $query->where('approvable_type', $class);
     }
+
+    public function scopeOfId($query, $id): Builder
+    {
+        return $query->where('approvable_id', $id);
+    }
+
+    public function scopeByUser($query, $userId): Builder
+    {
+        return $query->where('user_id', $userId);
+    }
+
+    public function scopeLatest($query): Builder
+    {
+        return $query->orderByDesc('created_at');
+    }
 }
