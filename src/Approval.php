@@ -6,6 +6,7 @@ use DateTime;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model as Eloquent;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Auth;
 
 class Approval extends Eloquent {
@@ -87,5 +88,17 @@ class Approval extends Eloquent {
     public function scopeLatest($query): Builder
     {
         return $query->orderByDesc('created_at');
+    }
+
+    public function scopeNewAndLinkedWith($query, $linkKey, $linkValue): Builder
+    {
+        return $query->whereIn('batch', function (QueryBuilder $subQuery) use ($linkKey, $linkValue) {
+
+            $subQuery->select('batch')
+                ->from($this->table)
+                ->whereNull('approvable_id')
+                ->where('key', $linkKey)
+                ->where('new_value', $linkValue);
+        });
     }
 }
