@@ -9,7 +9,8 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Support\Facades\Auth;
 
-class Approval extends Eloquent {
+class Approval extends Eloquent
+{
     public $table = 'approvals';
 
     protected $casts = [
@@ -34,9 +35,20 @@ class Approval extends Eloquent {
         return $this->key;
     }
 
-    public function accept(): void
+    /**
+     *
+     * @param $overrideApprovable Approvable used when accepting a change on a new model
+     * @throws \Exception
+     */
+    public function accept($overrideApprovable = null): void
     {
-        $approvable = $this->approvable;
+        if ($overrideApprovable) {
+            $approvable          = $overrideApprovable;
+            $this->approvable_id = $overrideApprovable->id;
+        } else {
+            $approvable = $this->approvable;
+        }
+
         $approvable->withoutApproval();
         $approvable->{$this->getFieldName()} = $this->new_value;
         $approvable->save();
