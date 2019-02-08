@@ -97,6 +97,11 @@ class Approval extends Eloquent
         return $query->where('user_id', $userId);
     }
 
+    public function scopeByBatch($query, $batchId): Builder
+    {
+        return $query->where('batch', $batchId);
+    }
+
     public function scopeLatest($query): Builder
     {
         return $query->orderByDesc('created_at');
